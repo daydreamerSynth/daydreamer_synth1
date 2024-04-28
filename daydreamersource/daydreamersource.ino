@@ -285,6 +285,97 @@ void doMidiStates()
         }
         switch(gPolyphonyStatus)
         {
+            /*************************************************Polyphonic Section************************************************************/
+            case POLY_3:
+            {
+                static unsigned int lNumAssigned = 0;
+                static unsigned int lNumPressed = 0;
+                const unsigned int lNumOsc = 2;
+
+                lNumPressed = gNotesPressed.size();
+                if(gMidiState.status == NOTE_ON && (gMidiState.newNote >= lowestMidi && gMidiState.newNote <= highestMidi))
+                {
+                    addToAssignmentPoly(gOscillatorAssignmentPoly, lNumAssigned, lNumOsc, lNumPressed);
+                }
+                else if(gMidiState.status == NOTE_OFF)
+                {
+                    removeFromAssignmentPoly(gOscillatorAssignmentPoly, lNumOsc);
+                }
+
+                // assign the oscillators
+                for(int lAssignmentIndex = 0; lAssignmentIndex < lNumOsc; lAssignmentIndex++)
+                {
+                    //update the sustaining State
+                    if(!gMidiState.sustainIsOn && gOscillatorAssignmentPoly[lAssignmentIndex].doRelease)
+                    {
+                        gOscillatorAssignmentPoly[lAssignmentIndex].note = 0;
+                    }
+
+                    if(gOscillatorAssignmentPoly[lAssignmentIndex].note != 0)
+                    {
+                        //turn the note on
+                        uint8_t vcoMidiToSet = gOscillatorAssignmentPoly[lAssignmentIndex].note;
+                        if(gOscillatorAssignmentPoly[lAssignmentIndex].doAttack)
+                        {
+                            switch(lAssignmentIndex)
+                            {
+                                case 0:
+                                    gVcoAMidiValue = vcoMidiToSet;
+                                    gEnvelopeA.setVelocity(gMidiState.velocity);
+                                    gEnvelopeA.setAdsrState(ATTACK_STATE);
+
+                                    gVcoBMidiValue = vcoMidiToSet;
+                                    gEnvelopeB.setVelocity(gMidiState.velocity);
+                                    gEnvelopeB.setAdsrState(ATTACK_STATE);
+                                    
+                                    gVcoCMidiValue = vcoMidiToSet;
+                                    gEnvelopeC.setVelocity(gMidiState.velocity);
+                                    gEnvelopeC.setAdsrState(ATTACK_STATE);
+                                    break;
+
+                                case 1:
+                                    gVcoEMidiValue = vcoMidiToSet;
+                                    gEnvelopeE.setVelocity(gMidiState.velocity);
+                                    gEnvelopeE.setAdsrState(ATTACK_STATE);
+
+                                    gVcoFMidiValue = vcoMidiToSet;
+                                    gEnvelopeF.setVelocity(gMidiState.velocity);
+                                    gEnvelopeF.setAdsrState(ATTACK_STATE);
+                                    
+                                    gVcoDMidiValue = vcoMidiToSet;
+                                    gEnvelopeD.setVelocity(gMidiState.velocity);
+                                    gEnvelopeD.setAdsrState(ATTACK_STATE);
+                                    break;
+                            }
+                            gOscillatorAssignmentPoly[lAssignmentIndex].doAttack = false;
+                        }
+                    }
+                    else
+                    {
+                        // turn the note off
+                        if(gOscillatorAssignmentPoly[lAssignmentIndex].doRelease)
+                        {
+                            switch(lAssignmentIndex)
+                            {
+                                case 0:
+                                    gEnvelopeA.setAdsrState(RELEASE_STATE);
+                                    gEnvelopeB.setAdsrState(RELEASE_STATE);
+                                    gEnvelopeC.setAdsrState(RELEASE_STATE);
+                                    break;
+                                case 1:
+                                    gEnvelopeD.setAdsrState(RELEASE_STATE);
+                                    gEnvelopeE.setAdsrState(RELEASE_STATE);
+                                    gEnvelopeF.setAdsrState(RELEASE_STATE);
+                                    break;
+                            }
+                            gOscillatorAssignmentPoly[lAssignmentIndex].doRelease = false;
+                            gOscillatorAssignmentPoly[lAssignmentIndex].age = 0;
+                            lNumAssigned--;
+                        }
+                    }
+                }
+                break;
+            }
             case POLY_2:
             {
                 static unsigned int lNumAssigned = 0;
@@ -512,7 +603,114 @@ void doMidiStates()
             }
             
             /*************************************************Monophonic Section************************************************************/
+            case MONO_6:
+            {
+                static bool doRelease = false;       
+                // if there are notes in our vector, play the one at the top.
+                if(gNotesPressed.size() == 1 && (gEnvelopeA.mAdsrStatus == OFF_STATE || gEnvelopeA.mAdsrStatus == RELEASE_STATE))
+                {
+                    doRelease = false;
+                    gEnvelopeA.setAdsrState(ATTACK_STATE);
+                    gEnvelopeA.setVelocity(gMidiState.velocity);
+                    gEnvelopeB.setAdsrState(ATTACK_STATE);
+                    gEnvelopeB.setVelocity(gMidiState.velocity);
+                    gEnvelopeC.setAdsrState(ATTACK_STATE);
+                    gEnvelopeC.setVelocity(gMidiState.velocity);
+                    gEnvelopeD.setAdsrState(ATTACK_STATE);
+                    gEnvelopeD.setVelocity(gMidiState.velocity);
+                    gEnvelopeE.setAdsrState(ATTACK_STATE);
+                    gEnvelopeE.setVelocity(gMidiState.velocity);
+                    gEnvelopeF.setAdsrState(ATTACK_STATE);
+                    gEnvelopeF.setVelocity(gMidiState.velocity);
+                }
+                if (!gNotesPressed.empty())
+                {
+                    gVcoAMidiValue = gNotesPressed.at(gNotesPressed.size()-1);
+                    gVcoBMidiValue = gVcoAMidiValue;
+                    gVcoCMidiValue = gVcoAMidiValue;
+                    gVcoDMidiValue = gVcoAMidiValue;
+                    gVcoEMidiValue = gVcoAMidiValue;
+                    gVcoFMidiValue = gVcoAMidiValue;
+                }
+                // otherwise, release our VCA
+                else
+                {
+                    gMidiState.sustainIsOn ? doRelease = false : doRelease = true;
+                    // glide stuff
+                    gPitchA.mNotesAreFull = false;
+                    gPitchB.mNotesAreFull = false;
+                    gPitchC.mNotesAreFull = false;
+                    gPitchD.mNotesAreFull = false;
+                    gPitchE.mNotesAreFull = false;
+                    gPitchF.mNotesAreFull = false;
+                }
+                if(doRelease)
+                {
+                    gEnvelopeA.setAdsrState(RELEASE_STATE);
+                    gEnvelopeB.setAdsrState(RELEASE_STATE);
+                    gEnvelopeC.setAdsrState(RELEASE_STATE);
+                    gEnvelopeD.setAdsrState(RELEASE_STATE);
+                    gEnvelopeE.setAdsrState(RELEASE_STATE);
+                    gEnvelopeF.setAdsrState(RELEASE_STATE); 
+                }
 
+                // glide stuff
+                if(gNotesPressed.size() > 1)
+                {
+                    gPitchA.mNotesAreFull = true;
+                    gPitchB.mNotesAreFull = true;
+                    gPitchC.mNotesAreFull = true;
+                    gPitchD.mNotesAreFull = true;
+                    gPitchE.mNotesAreFull = true;
+                    gPitchF.mNotesAreFull = true;
+                }
+                break;
+            }
+            case MONO_3:
+            {
+                static bool doRelease = false;       
+                // if there are notes in our vector, play the one at the top.
+                if(gNotesPressed.size() == 1 && (gEnvelopeA.mAdsrStatus == OFF_STATE || gEnvelopeA.mAdsrStatus == RELEASE_STATE))
+                {
+                    doRelease = false;
+                    gEnvelopeA.setAdsrState(ATTACK_STATE);
+                    gEnvelopeA.setVelocity(gMidiState.velocity);
+                    gEnvelopeB.setAdsrState(ATTACK_STATE);
+                    gEnvelopeB.setVelocity(gMidiState.velocity);
+                    gEnvelopeC.setAdsrState(ATTACK_STATE);
+                    gEnvelopeC.setVelocity(gMidiState.velocity);
+                }
+                if (!gNotesPressed.empty())
+                {
+                    gVcoAMidiValue = gNotesPressed.at(gNotesPressed.size()-1);
+                    gVcoBMidiValue = gVcoAMidiValue;
+                    gVcoCMidiValue = gVcoAMidiValue;
+                }
+                // otherwise, release our VCA
+                else
+                {
+                    gMidiState.sustainIsOn ? doRelease = false : doRelease = true;
+                    // glide stuff
+                    gPitchA.mNotesAreFull = false;
+                    gPitchB.mNotesAreFull = false;
+                    gPitchC.mNotesAreFull = false;
+                }
+                if(doRelease)
+                {
+                    gEnvelopeA.setAdsrState(RELEASE_STATE);
+                    gEnvelopeB.setAdsrState(RELEASE_STATE);  
+                    gEnvelopeC.setAdsrState(RELEASE_STATE);  
+                }
+
+                // glide stuff
+                if(gNotesPressed.size() > 1)
+                {
+                    gPitchA.mNotesAreFull = true;
+                    gPitchB.mNotesAreFull = true;
+                    gPitchC.mNotesAreFull = true;
+                }
+                break;
+            }
             case MONO_2:
             {
                 static bool doRelease = false;       
@@ -715,12 +913,51 @@ void loop()
         if(!digitalReadFromMux(muxA_S0, muxA_S1, muxA_S2, muxA_Input, SW_MONO_POLY_CHAN))
         {
             // if digitalRead is 0, we are in poly
-            gPolyphonyStatus = !digitalReadFromMux(muxA_S0, muxA_S1, muxA_S2, muxA_Input, SW_1OSC_2OSC_CHAN) ? POLY_2 : POLY_1;
+            if(!digitalReadFromMux(muxA_S0, muxA_S1, muxA_S2, muxA_Input, SW_1OSC_6OSC_CHAN))
+            {
+                // if the 6 osc switch
+                gPolyphonyStatus = MONO_6;
+            }
+            else if(!digitalReadFromMux(muxA_S0, muxA_S1, muxA_S2, muxA_Input, SW_1OSC_3OSC_CHAN))
+            {
+                // if the 3 osc switch
+                gPolyphonyStatus = POLY_3;
+            }
+            else if(!digitalReadFromMux(muxA_S0, muxA_S1, muxA_S2, muxA_Input, SW_1OSC_2OSC_CHAN))
+            {
+                // if the 2 osc switch
+                gPolyphonyStatus = POLY_2;
+            }
+            else
+            {
+                // all switches are off.
+                gPolyphonyStatus = POLY_1;
+            }
         }
         else
         {
             //digitalread is 1, we are mono
-            gPolyphonyStatus = !digitalReadFromMux(muxA_S0, muxA_S1, muxA_S2, muxA_Input, SW_1OSC_2OSC_CHAN) ? MONO_2 : MONO_1;
+            if(!digitalReadFromMux(muxA_S0, muxA_S1, muxA_S2, muxA_Input, SW_1OSC_6OSC_CHAN))
+            {
+                // if the 6 osc switch
+                gPolyphonyStatus = MONO_6;
+            }
+            else if(!digitalReadFromMux(muxA_S0, muxA_S1, muxA_S2, muxA_Input, SW_1OSC_3OSC_CHAN))
+            {
+                // if the 3 osc switch
+                gPolyphonyStatus = MONO_3;
+            }
+            else if(!digitalReadFromMux(muxA_S0, muxA_S1, muxA_S2, muxA_Input, SW_1OSC_2OSC_CHAN))
+            {
+                // if the 2 osc switch
+                gPolyphonyStatus = MONO_2;
+            }
+            else
+            {
+                // all switches are off.
+                gPolyphonyStatus = MONO_1;
+            }
+
         }
     }
 
@@ -747,7 +984,7 @@ void loop()
     // sei();
 
     // MOD to Oscillator switch
-    int gPitchToSet = (!digitalReadFromMux(muxA_S0, muxA_S1, muxA_S2, muxA_Input, SW_MOD_ROUTE_VCO_CHAN)) ? gPitchBendScaled + static_cast<int>(gLfoA.mLfoVcoScalarOutput * 100) : gPitchBendScaled;
+    int gPitchToSet = gPitchBendScaled + static_cast<int>(gLfoA.mLfoVcoScalarOutput * 100);
     gPitchA.mPitchAndLfoBend = gPitchToSet;
     gPitchB.mPitchAndLfoBend = gPitchToSet;
     gPitchC.mPitchAndLfoBend = gPitchToSet;
@@ -862,7 +1099,7 @@ void loop()
         Tlc.set(noiseTlcPin, maxVcaValues);
         
         // set VCF
-        uint16_t vcfValueToSet = (!digitalReadFromMux(muxA_S0, muxA_S1, muxA_S2, muxA_Input, SW_MOD_ROUTE_VCF_CHAN)) ? (maxVcaValues - maxVcaValues * (gLfoA.mLfoVcfScalarOutput + gLfoA.mLfoVcfScalar) / 2) : maxVcaValues;
+        uint16_t vcfValueToSet = (maxVcaValues - maxVcaValues * (gLfoA.mLfoVcfScalarOutput + gLfoA.mLfoVcfScalar) / 2);
         Tlc.set(lpfTlcPin, vcfValueToSet);
 
         Tlc.update();
