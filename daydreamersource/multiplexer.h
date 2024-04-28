@@ -9,15 +9,17 @@ functions and variables for handling multiplexed inputs
 #define SW_MIDICHAN_BIT1_CHAN 1
 #define SW_MIDICHAN_BIT2_CHAN 2
 #define SW_MIDICHAN_BIT3_CHAN 3
+#define SW_MIDI_MODWHEEL_ROUTE_FREQ_CHAN 5
+#define SW_MIDI_MODWHEEL_ROUTE_VCF_AMT_CHAN 7
+#define SW_MIDI_MODWHEEL_ROUTE_VCO_AMT_CHAN 6
+//4 on muxC is unused
+
 
 #define SW_MONO_POLY_CHAN 0
 #define SW_1OSC_2OSC_CHAN 1
-// #define SW_MIDI_MODWHEEL_ROUTE_AMT_CHAN 2
-// #define SW_MIDI_MODWHEEL_ROUTE_FREQ_CHAN 3
 #define SW_1OSC_3OSC_CHAN 2
 #define SW_1OSC_6OSC_CHAN 3
-#define SW_MIDI_MODWHEEL_ROUTE_AMT_CHAN 4
-#define SW_MIDI_MODWHEEL_ROUTE_FREQ_CHAN 5
+// 4 and 5 on muxA are unused
 #define SW_MOD_SINE_SQUARE_CHAN 6
 #define SW_LEGATOGLIDE_CHAN 7
 
