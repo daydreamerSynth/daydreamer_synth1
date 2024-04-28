@@ -1,0 +1,1 @@
+plink -serial COM7 -sercfg 31250,8,n,1,N
