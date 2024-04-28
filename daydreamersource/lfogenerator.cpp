@@ -47,10 +47,12 @@ void LfoGenerator::calculateModulation(bool lSineOrSquare)
     if(lSineOrSquare)
     {
         mLfoVcfScalarOutput = mLfoVcfScalar * calculateSine(t);
+        mLfoVcoScalarOutput = mLfoVcoScalar * calculateSine(t);
     }
     else
     {
         mLfoVcfScalarOutput = mLfoVcfScalar * calculateSquare(t);
+        mLfoVcoScalarOutput = mLfoVcoScalar * calculateSquare(t);
     }
 }
 

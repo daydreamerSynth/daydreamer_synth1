@@ -733,17 +733,21 @@ void loop()
     int gKnobLfoFrequency = analogReadFromMux(muxB_S0, muxB_S1, muxB_S2, muxB_Input, KNB_MOD_FRQ_CHAN); 
     int gKnobLfoVcfAmount = analogReadFromMux(muxB_S0, muxB_S1, muxB_S2, muxB_Input, KNB_MOD_VCF_AMT_CHAN);
     int gKnobLfoVcoAmount = analogReadFromMux(muxB_S0, muxB_S1, muxB_S2, muxB_Input, KNB_MOD_VCO_AMT_CHAN);
-    int gLfoVcfAmplitudeReading = (!digitalReadFromMux(muxA_S0, muxA_S1, muxA_S2, muxA_Input, SW_MIDI_MODWHEEL_ROUTE_AMT_CHAN)) ?  max(gKnobLfoVcfAmount, gModWheelScaled): gKnobLfoVcfAmount;
-    int gLfoRecordLengthReading = (!digitalReadFromMux(muxA_S0, muxA_S1, muxA_S2, muxA_Input, SW_MIDI_MODWHEEL_ROUTE_FREQ_CHAN)) ?  max(gKnobLfoFrequency, gModWheelScaled): gKnobLfoFrequency;
+    int gLfoVcfAmplitudeReading = gKnobLfoVcfAmount;
+    int gLfoVcoAmplitudeReading = gKnobLfoVcoAmount;
+    int gLfoRecordLengthReading = gKnobLfoFrequency;
+    // int gLfoVcfAmplitudeReading = (!digitalReadFromMux(muxA_S0, muxA_S1, muxA_S2, muxA_Input, SW_MIDI_MODWHEEL_ROUTE_AMT_CHAN)) ?  max(gKnobLfoVcfAmount, gModWheelScaled): gKnobLfoVcfAmount;
+    // int gLfoRecordLengthReading = (!digitalReadFromMux(muxA_S0, muxA_S1, muxA_S2, muxA_Input, SW_MIDI_MODWHEEL_ROUTE_FREQ_CHAN)) ?  max(gKnobLfoFrequency, gModWheelScaled): gKnobLfoFrequency;
     
     
     gLfoA.setLfoRecordLength(gLfoRecordLengthReading);
     gLfoA.setLfoVcfScalar(gLfoVcfAmplitudeReading);
+    gLfoA.setLfoVcoScalar(gLfoVcoAmplitudeReading);
     gLfoSineOrSquare = digitalReadFromMux(muxA_S0, muxA_S1, muxA_S2, muxA_Input, SW_MOD_SINE_SQUARE_CHAN);
     // sei();
 
     // MOD to Oscillator switch
-    int gPitchToSet = (!digitalReadFromMux(muxA_S0, muxA_S1, muxA_S2, muxA_Input, SW_MOD_ROUTE_VCO_CHAN)) ? gPitchBendScaled + static_cast<int>(gLfoA.mLfoVcfScalarOutput * 100) : gPitchBendScaled;
+    int gPitchToSet = (!digitalReadFromMux(muxA_S0, muxA_S1, muxA_S2, muxA_Input, SW_MOD_ROUTE_VCO_CHAN)) ? gPitchBendScaled + static_cast<int>(gLfoA.mLfoVcoScalarOutput * 100) : gPitchBendScaled;
     gPitchA.mPitchAndLfoBend = gPitchToSet;
     gPitchB.mPitchAndLfoBend = gPitchToSet;
     gPitchC.mPitchAndLfoBend = gPitchToSet;
