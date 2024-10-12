@@ -913,10 +913,10 @@ void loop()
         if(!digitalReadFromMux(muxA_S0, muxA_S1, muxA_S2, muxA_Input, SW_MONO_POLY_CHAN))
         {
             // if digitalRead is 0, we are in poly
-            if(!digitalReadFromMux(muxA_S0, muxA_S1, muxA_S2, muxA_Input, SW_1OSC_6OSC_CHAN))
+            if(!digitalReadFromMux(muxA_S0, muxA_S1, muxA_S2, muxA_Input, SW_1OSC_1OSC_CHAN))
             {
-                // if the 6 osc switch
-                gPolyphonyStatus = MONO_6;
+                // if the 1 osc switch
+                gPolyphonyStatus = POLY_1;
             }
             else if(!digitalReadFromMux(muxA_S0, muxA_S1, muxA_S2, muxA_Input, SW_1OSC_3OSC_CHAN))
             {
@@ -931,16 +931,16 @@ void loop()
             else
             {
                 // all switches are off.
-                gPolyphonyStatus = POLY_1;
+                gPolyphonyStatus = MONO_6;
             }
         }
         else
         {
             //digitalread is 1, we are mono
-            if(!digitalReadFromMux(muxA_S0, muxA_S1, muxA_S2, muxA_Input, SW_1OSC_6OSC_CHAN))
+            if(!digitalReadFromMux(muxA_S0, muxA_S1, muxA_S2, muxA_Input, SW_1OSC_1OSC_CHAN))
             {
-                // if the 6 osc switch
-                gPolyphonyStatus = MONO_6;
+                // if the 1 osc switch
+                gPolyphonyStatus = MONO_1;
             }
             else if(!digitalReadFromMux(muxA_S0, muxA_S1, muxA_S2, muxA_Input, SW_1OSC_3OSC_CHAN))
             {
@@ -955,7 +955,7 @@ void loop()
             else
             {
                 // all switches are off.
-                gPolyphonyStatus = MONO_1;
+                gPolyphonyStatus = MONO_6;
             }
 
         }

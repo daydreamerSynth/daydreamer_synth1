@@ -28,7 +28,7 @@ class EnvelopeGenerator
     unsigned int mTlcScalar;        // 127 * 32 = 4064
     unsigned long mTimeScalar;    // increase this value to get longer A,D,R range
     bool mFirstReleaseIteration;
-    unsigned long t;
+    unsigned long mTime;
     double mEnvelopeOutput;
     ADSR_STATUSES mAdsrStatus;
 

@@ -17,7 +17,7 @@ EnvelopeGenerator::EnvelopeGenerator()
     mTlcScalar = 32;
     mTimeScalar = 100;
     mFirstReleaseIteration = false;
-    t = 0;
+    mTime = 0;
     mEnvelopeOutput = 0;
     mAdsrStatus = OFF_STATE;
     mAttackKnobValue = 0;
@@ -64,20 +64,20 @@ unsigned int EnvelopeGenerator::updateOutput()
             // Serial.println("attack state");
             mFirstReleaseIteration = true;
             // consider using knobValue to affect mSlope directly, and not use it for time to calculate mSlope from.
-            (t == 0) ? mEnvelopeOutput = 300 : mEnvelopeOutput; //300 is practically 0. start at 300 to save start time from silence
+            (mTime == 0) ? mEnvelopeOutput = 300 : mEnvelopeOutput; //300 is practically 0. start at 300 to save start time from silence
             mAttackLinearParameters.mTimeLength = mAttackKnobValue * mTimeScalar + 1;
             mAttackLinearParameters.mFinalAmplitude = mVelocity * mTlcScalar;    
             
-            if(t < mAttackLinearParameters.mTimeLength && mAttackLinearParameters.mFinalAmplitude - mEnvelopeOutput > 1) // > 1 because it takes to long to get to 0
+            if(mTime < mAttackLinearParameters.mTimeLength && mAttackLinearParameters.mFinalAmplitude - mEnvelopeOutput > 1) // > 1 because it takes to long to get to 0
             {
-                t++;
-                mAttackLinearParameters.mSlope = (mAttackLinearParameters.mFinalAmplitude - mEnvelopeOutput) / (mAttackLinearParameters.mTimeLength - t);
-                mEnvelopeOutput += mAttackLinearParameters.mSlope * (t);
+                mTime++;
+                mAttackLinearParameters.mSlope = (mAttackLinearParameters.mFinalAmplitude - mEnvelopeOutput) / (mAttackLinearParameters.mTimeLength - mTime);
+                mEnvelopeOutput += mAttackLinearParameters.mSlope * (mTime);
             }
             else
             {
                 mEnvelopeOutput = mAttackLinearParameters.mFinalAmplitude;
-                t = 0;
+                mTime = 0;
                 mAdsrStatus = DECAY_STATE;
             }
 
@@ -96,16 +96,16 @@ unsigned int EnvelopeGenerator::updateOutput()
             mDecayLinearParameters.mTimeLength = mDecayKnobValue * mTimeScalar + 1;
             mDecayLinearParameters.mFinalAmplitude = mAttackLinearParameters.mFinalAmplitude * (double)mSustainKnobValue/1023;  //1023 is max 10 bit ADC value  
 
-            if(t < mDecayLinearParameters.mTimeLength && mEnvelopeOutput - mDecayLinearParameters.mFinalAmplitude > 1)   // > 1 because it takes to long to get to 0
+            if(mTime < mDecayLinearParameters.mTimeLength && mEnvelopeOutput - mDecayLinearParameters.mFinalAmplitude > 1)   // > 1 because it takes to long to get to 0
             {
-                t++;
-                mDecayLinearParameters.mSlope = (mDecayLinearParameters.mFinalAmplitude - mEnvelopeOutput) / (mDecayLinearParameters.mTimeLength - t);
-                mEnvelopeOutput += mDecayLinearParameters.mSlope * (t);
+                mTime++;
+                mDecayLinearParameters.mSlope = (mDecayLinearParameters.mFinalAmplitude - mEnvelopeOutput) / (mDecayLinearParameters.mTimeLength - mTime);
+                mEnvelopeOutput += mDecayLinearParameters.mSlope * (mTime);
             }
             else
             {
                 mEnvelopeOutput = mDecayLinearParameters.mFinalAmplitude;
-                t = 0;
+                mTime = 0;
                 mAdsrStatus = SUSTAIN_STATE;
             }
             break;
@@ -121,21 +121,21 @@ unsigned int EnvelopeGenerator::updateOutput()
             if(mFirstReleaseIteration)
             {
                 mFirstReleaseIteration = false;
-                t = 0;
+                mTime = 0;
             }
             mReleaseLinearParameters.mTimeLength = mReleaseKnobValue * mTimeScalar + 1;
             mReleaseLinearParameters.mFinalAmplitude = 0;
 
-            if(t < mReleaseLinearParameters.mTimeLength && mEnvelopeOutput > 200)  // > 200 because it takes too long to get to 0 and 200 is practically 0
+            if(mTime < mReleaseLinearParameters.mTimeLength && mEnvelopeOutput > 200)  // > 200 because it takes too long to get to 0 and 200 is practically 0
             {
-                t++;
-                mReleaseLinearParameters.mSlope = (mReleaseLinearParameters.mFinalAmplitude - mEnvelopeOutput) / (mReleaseLinearParameters.mTimeLength - t);
-                mEnvelopeOutput += mReleaseLinearParameters.mSlope * (t);
+                mTime++;
+                mReleaseLinearParameters.mSlope = (mReleaseLinearParameters.mFinalAmplitude - mEnvelopeOutput) / (mReleaseLinearParameters.mTimeLength - mTime);
+                mEnvelopeOutput += mReleaseLinearParameters.mSlope * (mTime);
             }
             else
             {
                 mEnvelopeOutput = mReleaseLinearParameters.mFinalAmplitude;
-                t = 0;
+                mTime = 0;
                 mAdsrStatus = OFF_STATE;
             }
             break;
@@ -143,6 +143,6 @@ unsigned int EnvelopeGenerator::updateOutput()
         default:
             break;
     }
-    // Serial.println(t, DEC);
+    // Serial.println(mTime, DEC);
     return mEnvelopeOutput;
 }
