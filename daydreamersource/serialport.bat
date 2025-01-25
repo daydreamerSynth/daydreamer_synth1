@@ -1,1 +1,1 @@
-plink -serial COM7 -sercfg 31250,8,n,1,N
+"C:\Program Files\PuTTY\plink.exe" -serial COM10 -sercfg 31250,8,n,1,N
