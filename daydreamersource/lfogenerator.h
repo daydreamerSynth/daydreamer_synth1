@@ -47,3 +47,5 @@ class LfoGenerator
     void setLfoVcfScalar(int lReading);
     void setLfoVcoScalar(int lReading);
 };
+
+int calculateLogFromLinear(int lLinearValue);

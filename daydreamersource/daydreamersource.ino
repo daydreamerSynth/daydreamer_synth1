@@ -811,6 +811,7 @@ void doMidiStates()
         if(gMidiState.status == CONTROL && gMidiState.controlStatus == MODULATION)
         {
             // store this as in a global
+            //gModWheelScaled needs to be between 0 to 1023
             gModWheelScaled = gMidiState.modulation << 3; //127 * 8 = 1016
             // Serial.println(gModWheelScaled, DEC);
         }
@@ -980,12 +981,14 @@ void loop()
 
     // get LFO, knob values. I don't think I need to disable interrupts; these values are just being read from by one consumer
     // cli();
-    int gKnobLfoFrequency = analogReadFromMux(muxB_S0, muxB_S1, muxB_S2, muxB_Input, KNB_MOD_FRQ_CHAN); 
+
+    int gKnobLfoFrequency =  calculateLogFromLinear(analogReadFromMux(muxB_S0, muxB_S1, muxB_S2, muxB_Input, KNB_MOD_FRQ_CHAN));
+    int gModWheelScaledInLog = calculateLogFromLinear(gModWheelScaled);
+    int gLfoRecordLengthReading = (!digitalReadFromMux(muxC_S0, muxC_S1, muxC_S2, muxC_Input, SW_MIDI_MODWHEEL_ROUTE_FREQ_CHAN)) ?  max(gKnobLfoFrequency, gModWheelScaledInLog): gKnobLfoFrequency;
     int gKnobLfoVcfAmount = analogReadFromMux(muxB_S0, muxB_S1, muxB_S2, muxB_Input, KNB_MOD_VCF_AMT_CHAN);
     int gKnobLfoVcoAmount = analogReadFromMux(muxB_S0, muxB_S1, muxB_S2, muxB_Input, KNB_MOD_VCO_AMT_CHAN);
     int gLfoVcfAmplitudeReading = (!digitalReadFromMux(muxC_S0, muxC_S1, muxC_S2, muxC_Input, SW_MIDI_MODWHEEL_ROUTE_VCF_AMT_CHAN)) ?  max(gKnobLfoVcfAmount, gModWheelScaled): gKnobLfoVcfAmount;
     int gLfoVcoAmplitudeReading = (!digitalReadFromMux(muxC_S0, muxC_S1, muxC_S2, muxC_Input, SW_MIDI_MODWHEEL_ROUTE_VCO_AMT_CHAN)) ?  max(gKnobLfoVcoAmount, gModWheelScaled): gKnobLfoVcoAmount;
-    int gLfoRecordLengthReading = (!digitalReadFromMux(muxC_S0, muxC_S1, muxC_S2, muxC_Input, SW_MIDI_MODWHEEL_ROUTE_FREQ_CHAN)) ?  max(gKnobLfoFrequency, gModWheelScaled): gKnobLfoFrequency;
     
     
     gLfoA.setLfoRecordLength(gLfoRecordLengthReading);

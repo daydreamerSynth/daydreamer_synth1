@@ -54,6 +54,7 @@ int analogReadFromMux(uint8_t lS0Pin, uint8_t lS1Pin, uint8_t lS2Pin, uint8_t lC
 	digitalWrite(lS1Pin, (lChannel >> 1) & 1);
 	digitalWrite(lS2Pin, (lChannel >> 2) & 1);
     return analogRead(lCommonInPin);
+	//returns number between 0 and 1023
 }
 
 bool digitalReadFromMux(uint8_t lS0Pin, uint8_t lS1Pin, uint8_t lS2Pin, uint8_t lCommonInPin, uint8_t lChannel)

@@ -41,6 +41,7 @@ void LfoGenerator::setLfoVcoScalar(int lReading)
 
 void LfoGenerator::setLfoRecordLength(int lReading)
 {
+    // Analog read max is 1023. lReading is between 0 and 1023,, so that manes this  can be length 8 (knob up) to 1031 (knob down)
     mLfoRecordLength = ((1023 - lReading) + 8);
 }
 
@@ -48,16 +49,20 @@ void LfoGenerator::calculateModulation(bool lSineOrSquare)
 {
     static double tNum = 0;
     if(tNum < mLfoRecordLength)
+    // if time is less than the set record, increment
     {
         tNum++;
     }
     else
     {
+    //reset time to 0
         tNum = 0;
     }
     double t = tNum/mLfoRecordLength;
+    //turn the time into a percentage
     
     // t goes between 0 and 1.0
+    // so basically the LFO speed knob turns up the speed of time passing through a periodic function
 
     if(lSineOrSquare)
     {
@@ -85,4 +90,19 @@ double LfoGenerator::calculateSquare(double lt_square)
     {
         return -1.0;
     }
+}
+
+int calculateLogFromLinear(int lLinearValue)
+{
+    // Requires that lLinearValue be between 0 and 1023
+
+    // Add 1 to the value to prevent log(0) and cast to a float
+    double lLinearFloat = (double)lLinearValue + 1.0;
+    // 3. Calculate the logarithmic value and normalize it
+    double lLogValue = log(lLinearFloat);
+    // 4. Normalize and scale the output to the desired range (0-1023)
+    // Max log value is log(1024)
+    double lLogCurveValue = (lLogValue / log(1024.0)) * 1023.0;
+    // Convert the result back to an integer for use
+    return (int)lLogCurveValue;
 }
