@@ -121,6 +121,15 @@ void getMidiStates()
         uint8_t lMidibyte = gMidiBuffer.pop();
         // Serial.println(lMidibyte, HEX);
         
+        // Ignore RealTime messages (0xF8-0xFF) to prevent them from being interpreted as data
+        if (lMidibyte >= 0xF8) return;
+
+        // If a Status byte arrives while expecting Data, reset to STATUS state
+        if ((lMidibyte & 0x80) && gMidiState.parseStatus != STATUS)
+        {
+            gMidiState.parseStatus = STATUS;
+        }
+
         switch(gMidiState.parseStatus)
         {
             case STATUS:

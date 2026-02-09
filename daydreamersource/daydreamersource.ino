@@ -984,12 +984,11 @@ void loop()
 
     int gKnobLfoFrequency =  calculateLogFromLinear(analogReadFromMux(muxB_S0, muxB_S1, muxB_S2, muxB_Input, KNB_MOD_FRQ_CHAN));
     int gModWheelScaledInLog = calculateLogFromLinear(gModWheelScaled);
-    int gLfoRecordLengthReading = (!digitalReadFromMux(muxC_S0, muxC_S1, muxC_S2, muxC_Input, SW_MIDI_MODWHEEL_ROUTE_FREQ_CHAN)) ?  max(gKnobLfoFrequency, gModWheelScaledInLog): gKnobLfoFrequency;
     int gKnobLfoVcfAmount = analogReadFromMux(muxB_S0, muxB_S1, muxB_S2, muxB_Input, KNB_MOD_VCF_AMT_CHAN);
     int gKnobLfoVcoAmount = analogReadFromMux(muxB_S0, muxB_S1, muxB_S2, muxB_Input, KNB_MOD_VCO_AMT_CHAN);
     int gLfoVcfAmplitudeReading = (!digitalReadFromMux(muxC_S0, muxC_S1, muxC_S2, muxC_Input, SW_MIDI_MODWHEEL_ROUTE_VCF_AMT_CHAN)) ?  max(gKnobLfoVcfAmount, gModWheelScaled): gKnobLfoVcfAmount;
     int gLfoVcoAmplitudeReading = (!digitalReadFromMux(muxC_S0, muxC_S1, muxC_S2, muxC_Input, SW_MIDI_MODWHEEL_ROUTE_VCO_AMT_CHAN)) ?  max(gKnobLfoVcoAmount, gModWheelScaled): gKnobLfoVcoAmount;
-    
+    int gLfoRecordLengthReading = (!digitalReadFromMux(muxC_S0, muxC_S1, muxC_S2, muxC_Input, SW_MIDI_MODWHEEL_ROUTE_FREQ_CHAN)) ?  max(gKnobLfoFrequency, gModWheelScaledInLog): gKnobLfoFrequency;
     
     gLfoA.setLfoRecordLength(gLfoRecordLengthReading);
     gLfoA.setLfoVcfScalar(gLfoVcfAmplitudeReading);
