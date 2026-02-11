@@ -97,14 +97,10 @@ puts them into gMidiBuffer
 ********************************************************************************************************/
 void checkMidi()
 {
-    do
+    while(Serial.available())
     {
-        if(Serial.available())
-        {
-            gMidiBuffer.push(Serial.read());
-        }
+        gMidiBuffer.push(Serial.read());
     }
-    while (Serial.available() > 1); //when at least 3 bytes available (one message)   
 }
 
 /********************************************************************************************************
@@ -134,7 +130,8 @@ void getMidiStates()
         {
             case STATUS:
                 //check that we are on the right midi channel
-                if(static_cast<uint8_t>(lMidibyte & 15) != gMidiChannelNumber)
+                //System messages (0xF0-0xFF) do not have a channel, so we only check for < 0xF0
+                if(lMidibyte < 0xF0 && static_cast<uint8_t>(lMidibyte & 15) != gMidiChannelNumber)
                 {
                     return;
                 }
