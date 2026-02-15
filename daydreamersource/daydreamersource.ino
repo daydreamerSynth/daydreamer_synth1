@@ -288,11 +288,11 @@ void doMidiStates()
     if(gMidiState.parseStatus == DONE)
     {
         /****************************************Handle MIDI notes*****************************************/
-        if(gMidiState.status == NOTE_ON)
+        if(isNoteOn())
         {
             addToNotesPressed(gMidiState.newNote);
         }
-        else if(gMidiState.status == NOTE_OFF)
+        else if(isNoteOff())
         {
             removeFromNotesPressed(gMidiState.newNote);
         }
@@ -306,11 +306,11 @@ void doMidiStates()
                 const unsigned int lNumOsc = 2;
 
                 lNumPressed = gNotesPressed.size();
-                if(gMidiState.status == NOTE_ON && (gMidiState.newNote >= lowestMidi && gMidiState.newNote <= highestMidi))
+                if(isNoteOn() && (gMidiState.newNote >= lowestMidi && gMidiState.newNote <= highestMidi))
                 {
                     addToAssignmentPoly(gOscillatorAssignmentPoly, lNumAssigned, lNumOsc, lNumPressed);
                 }
-                else if(gMidiState.status == NOTE_OFF)
+                else if(isNoteOff())
                 {
                     removeFromAssignmentPoly(gOscillatorAssignmentPoly, lNumOsc);
                 }
@@ -396,11 +396,11 @@ void doMidiStates()
                 const unsigned int lNumOsc = 3;
 
                 lNumPressed = gNotesPressed.size();
-                if(gMidiState.status == NOTE_ON && (gMidiState.newNote >= lowestMidi && gMidiState.newNote <= highestMidi))
+                if(isNoteOn() && (gMidiState.newNote >= lowestMidi && gMidiState.newNote <= highestMidi))
                 {
                     addToAssignmentPoly(gOscillatorAssignmentPoly, lNumAssigned, lNumOsc, lNumPressed);
                 }
-                else if(gMidiState.status == NOTE_OFF)
+                else if(isNoteOff())
                 { 
                     removeFromAssignmentPoly(gOscillatorAssignmentPoly, lNumOsc);
                 }
@@ -504,11 +504,11 @@ void doMidiStates()
 
                 lNumPressed = gNotesPressed.size();
 
-                if(gMidiState.status == NOTE_ON && (gMidiState.newNote >= lowestMidi && gMidiState.newNote <= highestMidi))
+                if(isNoteOn() && (gMidiState.newNote >= lowestMidi && gMidiState.newNote <= highestMidi))
                 {
                     addToAssignmentPoly(gOscillatorAssignmentPoly, lNumAssigned, lNumOsc, lNumPressed);
                 }
-                else if(gMidiState.status == NOTE_OFF)
+                else if(isNoteOff())
                 {
                     removeFromAssignmentPoly(gOscillatorAssignmentPoly, lNumOsc);
                 }

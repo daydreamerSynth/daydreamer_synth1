@@ -17,6 +17,7 @@
 https://www.songstuff.com/recording/article/midi_message_format/
 https://github.com/TSJWang/Attinyx5_midi_cv_converter/blob/main/attiny85_MIDI_CV_converter/attiny85_MIDI_CV_converter.ino
 https://www.instructables.com/Send-and-Receive-MIDI-with-Arduino/
+https://www.somascape.org/midi/tech/spec.html
 
 The structure of a midi message:
 0   1   2   3   4   5   6   7       8   9   10  11  12  13  14  15      16  17  18  19  20  21  22  23
@@ -62,10 +63,13 @@ Data2:
 #define MIDIUTILS_H
 
 //LSB of status is the channel
-#define STATUS_NOTE_ON  0x90
-#define STATUS_NOTE_OFF 0x80
-#define STATUS_PITCH    0xE0
-#define STATUS_CONTROL  0xB0
+#define STATUS_NOTE_OFF         0x80
+#define STATUS_NOTE_ON          0x90
+#define STATUS_POLYAFTERTOUCH   0xA0
+#define STATUS_CONTROL          0xB0
+#define STATUS_PROGCHANGE       0xC0
+#define STATUS_AFTERTOUCH       0xD0
+#define STATUS_PITCH            0xE0
 //control messages
 #define CONTROL_MOD     0x01
 #define CONTROL_SUS     0x40
@@ -90,6 +94,16 @@ struct
     bool sustainIsOn;
 } gMidiState = {STATUS, UNDEFINED_STATUS, 0x3C, 0x00, UNDEFINED_CONTROL, 1, 0x00, 0, false};
 
+// Helper functions to handle "Note On with Velocity 0"
+bool isNoteOn()
+{
+    return (gMidiState.status == NOTE_ON && gMidiState.velocity > 0);
+}
+bool isNoteOff()
+{
+    return (gMidiState.status == NOTE_OFF || (gMidiState.status == NOTE_ON && gMidiState.velocity == 0));
+}
+
 /********************************************************************************************************
 checkMidi
 reads the serial port for new midi messages
@@ -112,16 +126,21 @@ void getMidiStates()
 {
     // Serial.println(gMidiBuffer.size(), DEC);  // good for seeing parsing latency
     // delay(300);
-    if(!gMidiBuffer.isEmpty())
+    // Optimization: Process all available bytes until a message is complete or buffer is empty
+    while(!gMidiBuffer.isEmpty() && gMidiState.parseStatus != DONE)
     {
         uint8_t lMidibyte = gMidiBuffer.pop();
         // Serial.println(lMidibyte, HEX);
         
         // Ignore RealTime messages (0xF8-0xFF) to prevent them from being interpreted as data
-        if (lMidibyte >= 0xF8) return;
+        if (lMidibyte >= 0xF8) 
+        {
+            return;
+        }
 
-        // If a Status byte arrives while expecting Data, reset to STATUS state
-        if ((lMidibyte & 0x80) && gMidiState.parseStatus != STATUS)
+        // If a Status byte arrives while expecting Data, reset to STATUS state 
+        if ((lMidibyte & 0x80) &&                // if the message is a status byte (0b1000 0000 is 0x80)
+            gMidiState.parseStatus != STATUS)    //and we arent already in status state
         {
             gMidiState.parseStatus = STATUS;
         }
@@ -131,7 +150,9 @@ void getMidiStates()
             case STATUS:
                 //check that we are on the right midi channel
                 //System messages (0xF0-0xFF) do not have a channel, so we only check for < 0xF0
-                if(lMidibyte < 0xF0 && static_cast<uint8_t>(lMidibyte & 15) != gMidiChannelNumber)
+                //Only check channel if it is a status byte (>= 0x80). Data bytes must pass through.
+                if(lMidibyte >= 0x80 && lMidibyte < 0xF0 && 
+                    static_cast<uint8_t>(lMidibyte & 0x0F) != gMidiChannelNumber)
                 {
                     return;
                 }
@@ -141,7 +162,7 @@ void getMidiStates()
                 {
                     case (STATUS_NOTE_ON>>4):
                         gMidiState.status = NOTE_ON;
-                        gMidiState.parseStatus = DATA1;
+                        gMidiState.parseStatus = DATA1; // move onto the next parsing state
                         break;
                     case (STATUS_NOTE_OFF>>4):
                         gMidiState.status = NOTE_OFF;
@@ -155,9 +176,53 @@ void getMidiStates()
                         gMidiState.status = CONTROL;
                         gMidiState.parseStatus = DATA1;
                         break;
-                    default:
+                    case (STATUS_POLYAFTERTOUCH>>4):
+                    case (STATUS_AFTERTOUCH>>4):
+                    case (STATUS_PROGCHANGE>>4):
                         gMidiState.status = UNDEFINED_STATUS;
-                        gMidiState.parseStatus = STATUS;
+                        gMidiState.parseStatus = DATA1;
+                        break;
+                    
+                    default:
+                        // check to see if we recieved a non status byte
+                        if (lMidibyte>>7 == 0)
+                        {
+                            // if so, the status stays the same. 
+                            gMidiState.parseStatus = DATA1;
+                            // Running Status: This byte is Data1. Process it immediately.
+                            switch(gMidiState.status)
+                            {
+                                case NOTE_ON:
+                                case NOTE_OFF:
+                                    gMidiState.newNote = lMidibyte;
+                                    break;
+                                case PITCH_BEND:
+                                    gMidiState.pitchBendLSB = lMidibyte;
+                                    break;
+                                case CONTROL:
+                                    switch(lMidibyte)
+                                    {
+                                        case CONTROL_MOD:
+                                            gMidiState.controlStatus = MODULATION;
+                                            break;
+                                        case CONTROL_SUS:
+                                            gMidiState.controlStatus = SUSTAIN_PEDAL;
+                                            break;
+                                        default:
+                                            gMidiState.controlStatus = UNDEFINED_CONTROL;
+                                            break;
+                                    }
+                                    break;
+                                default:
+                                    break;
+                            }
+                            gMidiState.parseStatus = DATA2;
+                        }
+                        else
+                        {
+                            gMidiState.status = UNDEFINED_STATUS;
+                            gMidiState.parseStatus = STATUS;    // do not move onto next parsing state, parse first byte again
+                        }
                         break;
                 }
                 break;
@@ -215,7 +280,9 @@ void getMidiStates()
                             default:
                                 break;
                         }
+                        break;
                     case NOTE_OFF:
+                        // no need to record velocity for a note off.
                     default:
                         break;
                 }
