@@ -73,6 +73,11 @@
 
 #define _NOP() do { __asm__ __volatile__ ("nop"); } while (0)
 
+//drone mode: oscillators always on at a fixed pitch, VCA/noise/filter wide open. no MIDI. chosen at boot.
+#define DRONE_MIDI_NOTE 60      // middle C
+#define DRONE_VCA_LEVEL 4064    // 127 * 32, same as max envelope output
+bool gDroneMode = false;
+
 //lfogenerator object
 LfoGenerator gLfoA;
 bool gLfoSineOrSquare;
@@ -848,6 +853,62 @@ ISR(TIMER0_COMPA_vect){
 //     digitalWrite(debugLedPin, HIGH);
 // }
 
+void writeTlc();
+
+// filter is fully open (lMaxVca) minus whatever the LFO / mod amount closes it by
+uint16_t calculateVcfValue(uint16_t lMaxVca)
+{
+    return (lMaxVca - lMaxVca * (gLfoA.mLfoVcfScalarOutput + gLfoA.mLfoVcfScalar) / 2);
+}
+
+// drone mode: the first n oscillators play middle C at full level, the rest are silent.
+// n comes from the 1/2/3 osc switches (none = 6). mono/poly, envelopes and glide are not used.
+void runDroneOutput()
+{
+    static uint16_t lLastVcfValue = 0xFFFF;
+
+    uint8_t lNumOsc = 6;
+    if(!digitalReadFromMux(muxA_S0, muxA_S1, muxA_S2, muxA_Input, SW_1OSC_1OSC_CHAN))
+    {
+        lNumOsc = 1;
+    }
+    else if(!digitalReadFromMux(muxA_S0, muxA_S1, muxA_S2, muxA_Input, SW_1OSC_3OSC_CHAN))
+    {
+        lNumOsc = 3;
+    }
+    else if(!digitalReadFromMux(muxA_S0, muxA_S1, muxA_S2, muxA_Input, SW_1OSC_2OSC_CHAN))
+    {
+        lNumOsc = 2;
+    }
+
+    PitchGenerator *lPitch[6] = {&gPitchA, &gPitchB, &gPitchC, &gPitchD, &gPitchE, &gPitchF};
+    unsigned int *lVco[6] = {&gVcoAtlcValue, &gVcoBtlcValue, &gVcoCtlcValue, &gVcoDtlcValue, &gVcoEtlcValue, &gVcoFtlcValue};
+    unsigned int *lVca[6] = {&gVcaAtlcValue, &gVcaBtlcValue, &gVcaCtlcValue, &gVcaDtlcValue, &gVcaEtlcValue, &gVcaFtlcValue};
+
+    // the TLC is only rewritten when something changed: the VCAs are constant, so that's the pitch (LFO) and the filter (LFO)
+    for(uint8_t lOsc = 0; lOsc < 6; lOsc++)
+    {
+        unsigned int lNewVco = lPitch[lOsc]->calculateOutPitch(DRONE_MIDI_NOTE, SUSTAIN_STATE);
+        unsigned int lNewVca = (lOsc < lNumOsc) ? DRONE_VCA_LEVEL : 0;
+        if(lNewVco != *lVco[lOsc] || lNewVca != *lVca[lOsc])
+        {
+            *lVco[lOsc] = lNewVco;
+            *lVca[lOsc] = lNewVca;
+            gTlcNeedsUpdate = true;
+        }
+    }
+
+    // writeTlc() takes the max VCA for the noise and filter, which is DRONE_VCA_LEVEL since at least one oscillator always sounds
+    uint16_t lVcfValue = calculateVcfValue(DRONE_VCA_LEVEL);
+    if(lVcfValue != lLastVcfValue)
+    {
+        lLastVcfValue = lVcfValue;
+        gTlcNeedsUpdate = true;
+    }
+
+    writeTlc();
+}
+
 /************************************************************************************************************************************/
 void setup()
 {
@@ -871,6 +932,17 @@ void setup()
     pinMode(muxC_Input, INPUT_PULLUP);
 
     pinMode(debugLedPin, OUTPUT);
+
+    // drone mode button on muxC is held LOW at boot. read before timer0 is reconfigured below, since delay() relies on it
+    gDroneMode = true;
+    for(uint8_t lSample = 0; lSample < 5; lSample++)
+    {
+        if(digitalReadFromMux(muxC_S0, muxC_S1, muxC_S2, muxC_Input, SW_DRONE_CHAN))
+        {
+            gDroneMode = false;
+        }
+        delay(2);
+    }
 
     //http://www.8bit-era.cz/arduino-timer-interrupts-calculator.html note that the CTC mode register in this code is using the wrong one. its A not B
     //this timer is set up for 60 Hz, 4 ms
@@ -975,9 +1047,13 @@ void loop()
         }
     }
 
-    checkMidi();
-    getMidiStates();
-    doMidiStates();
+    // drone mode takes no MIDI input
+    if(!gDroneMode)
+    {
+        checkMidi();
+        getMidiStates();
+        doMidiStates();
+    }
 
     // get LFO, knob values. I don't think I need to disable interrupts; these values are just being read from by one consumer
     // cli();
@@ -1005,6 +1081,12 @@ void loop()
     gPitchD.mPitchAndLfoBend = gPitchToSet;
     gPitchE.mPitchAndLfoBend = gPitchToSet;
     gPitchF.mPitchAndLfoBend = gPitchToSet;
+
+    if(gDroneMode)
+    {
+        runDroneOutput();
+        return;
+    }
 
     // pitch glide settings
     int mGlideLengthReading = analogReadFromMux(muxB_S0, muxB_S1, muxB_S2, muxB_Input, KNB_GLIDE_CHAN);
@@ -1089,6 +1171,11 @@ void loop()
         gVcoFtlcValue = gPitchF.calculateOutPitch(gVcoFMidiValue, gEnvelopeF.mAdsrStatus);
         gTlcNeedsUpdate = true;
     }
+    writeTlc();
+}
+
+void writeTlc()
+{
     digitalWrite(debugLedPin, LOW);
     if(gTlcNeedsUpdate)
     {
@@ -1113,8 +1200,7 @@ void loop()
         Tlc.set(noiseTlcPin, maxVcaValues);
         
         // set VCF
-        uint16_t vcfValueToSet = (maxVcaValues - maxVcaValues * (gLfoA.mLfoVcfScalarOutput + gLfoA.mLfoVcfScalar) / 2);
-        Tlc.set(lpfTlcPin, vcfValueToSet);
+        Tlc.set(lpfTlcPin, calculateVcfValue(maxVcaValues));
 
         Tlc.update();
         digitalWrite(debugLedPin, HIGH);

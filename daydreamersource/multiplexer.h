@@ -27,7 +27,7 @@
 #define SW_MIDI_MODWHEEL_ROUTE_FREQ_CHAN 5
 #define SW_MIDI_MODWHEEL_ROUTE_VCF_AMT_CHAN 6
 #define SW_MIDI_MODWHEEL_ROUTE_VCO_AMT_CHAN 7
-//4 on muxC is unused
+#define SW_DRONE_CHAN 4  // button held (LOW) at boot enables drone mode
 
 
 #define SW_MONO_POLY_CHAN 0
